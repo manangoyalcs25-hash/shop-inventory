@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Complete inventory management and billing system for your shop">
+    <meta name="theme-color" content="#6c63ff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Shop Inventory">
+    <link rel="manifest" href="manifest.json">
+    <title>Shop Inventory - Inventory & Billing System</title>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        const theme = localStorage.getItem('shopTheme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+    </script>
+</head>
+<body>
+
+<!-- Email Gate Screen (first-time setup) -->
+<div id="emailGate" class="email-gate" style="display:none;">
+    <div class="email-gate-card">
+        <div class="email-gate-logo">🏪</div>
+        <h1>Shop Inventory</h1>
+        <p class="email-gate-sub">Enter your email to get started</p>
+        <div class="email-gate-form">
+            <input type="email" id="gateEmail" placeholder="your@email.com" autocomplete="email">
+            <button onclick="submitEmailGate()" class="btn-gate">Get Started →</button>
+        </div>
+        <p class="email-gate-note">Your data is stored locally on this device.</p>
+    </div>
+</div>
+
+<!-- Profile Picker Screen (multi-user) -->
+<div id="profileScreen" class="email-gate" style="display:none;">
+    <div class="email-gate-card" style="max-width:480px;">
+        <div class="email-gate-logo">🏪</div>
+        <h1>Shop Inventory</h1>
+        <p class="email-gate-sub">Choose a profile to continue</p>
+        <div id="profileList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:0.75rem;margin:1.5rem 0;"></div>
+        <div id="addProfileForm" style="display:none;margin-top:1rem;">
+            <div style="display:flex;gap:0.5rem;margin-bottom:0.6rem;">
+                <input type="text" id="newProfileName" placeholder="Name" style="flex:1;background:var(--bg-secondary);border:1px solid var(--border-glow);border-radius:8px;padding:0.6rem 0.8rem;color:var(--text-light);">
+                <select id="newProfileAvatar" style="background:var(--bg-secondary);border:1px solid var(--border-glow);border-radius:8px;padding:0.6rem 0.5rem;color:var(--text-light);font-size:1.2rem;">
+                    <option>👤</option><option>👩</option><option>👨</option><option>🧑</option>
+                    <option>👩‍💼</option><option>👨‍💼</option><option>🧑‍💼</option>
+                </select>
+            </div>
+            <input type="email" id="newProfileEmail" placeholder="Email address" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-glow);border-radius:8px;padding:0.65rem 0.8rem;color:var(--text-light);margin-bottom:0.6rem;">
+            <button onclick="submitNewProfile()" class="btn-gate" style="width:100%;">Create Profile →</button>
+        </div>
+        <button onclick="showAddProfileForm()" class="btn-gate" style="width:100%;background:transparent;border:1.5px solid var(--primary);color:var(--primary);margin-top:0.75rem;">➕ Add New Profile</button>
+    </div>
+</div>
+
+<div class="container" id="mainApp" style="display:none;">
+    <!-- Mobile Top Bar -->
+    <div class="mobile-topbar">
+        <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileSidebar()">☰</button>
+        <span class="mobile-logo">🏪 Shop Inventory</span>
+        <button class="mobile-theme-btn" id="mobileThemeBtn">🌙</button>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-icon">🏪</div>
+            <h1 class="logo-text">Shop Inventory</h1>
+            <button class="sidebar-close-btn" onclick="closeMobileSidebar()">✕</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-page="dashboard">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Dashboard</span>
+            </a>
+            <a href="#" class="nav-item" data-page="products">
+                <span class="nav-icon">📦</span>
+                <span class="nav-label">Inventory</span>
+            </a>
+            <a href="#" class="nav-item" data-page="billing">
+                <span class="nav-icon">💳</span>
+                <span class="nav-label">Billing</span>
+            </a>
+            <a href="#" class="nav-item" data-page="lowstock">
+                <span class="nav-icon">⚠️</span>
+                <span class="nav-label">Low Stock</span>
+            </a>
+            <a href="#" class="nav-item" data-page="invoices">
+                <span class="nav-icon">📄</span>
+                <span class="nav-label">Invoices</span>
+            </a>
+            <a href="#" class="nav-item" data-page="colorbook">
+                <span class="nav-icon">🎨</span>
+                <span class="nav-label">Colour Book</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="#" class="nav-item" data-page="settings">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Settings</span>
+            </a>
+            <button id="themeToggle" class="theme-toggle-sidebar" title="Toggle Theme">🌙</button>
+        </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+
+    <main class="main-content">
+        <div class="top-bar">
+            <div class="page-title" id="pageTitle">Dashboard</div>
+            <div class="top-bar-actions">
+                <button class="btn-icon" id="addProductBtn" style="display: none;">➕</button>
+                <div class="user-chip" id="userEmailChip">👤</div>
+            </div>
+        </div>
+
+        <div class="pages-container">
+
+            <!-- Dashboard Page -->
+            <section id="dashboard" class="page active">
+                <div class="dashboard-row">
+                    <div class="stat-card cyan">
+                        <div class="stat-content">
+                            <h3>Total Products</h3>
+                            <p class="stat-number" id="totalProducts">0</p>
+                        </div>
+                        <span class="stat-icon">📦</span>
+                    </div>
+                    <div class="stat-card green">
+                        <div class="stat-content">
+                            <h3>Low Stock Items</h3>
+                            <p class="stat-number" id="lowStockItems">0</p>
+                        </div>
+                        <span class="stat-icon">⚠️</span>
+                    </div>
+                    <div class="stat-card purple">
+                        <div class="stat-content">
+                            <h3>Total Revenue</h3>
+                            <p class="stat-number" id="totalRevenue">₹0</p>
+                        </div>
+                        <span class="stat-icon">💰</span>
+                    </div>
+                    <div class="stat-card pink">
+                        <div class="stat-content">
+                            <h3>Invoices</h3>
+                            <p class="stat-number" id="totalInvoices">0</p>
+                        </div>
+                        <span class="stat-icon">📄</span>
+                    </div>
+                </div>
+                <div class="dashboard-row">
+                    <div class="card inventory-card">
+                        <div class="card-header">
+                            <h2>Recent Inventory</h2>
+                            <a href="#" class="view-all" data-page="products">View All →</a>
+                        </div>
+                        <div id="recentInventoryGrid" class="inventory-slider"></div>
+                    </div>
+                </div>
+                <div class="dashboard-row">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Recent Transactions</h2>
+                            <a href="#" class="view-all" data-page="invoices">View All →</a>
+                        </div>
+                        <div id="recentTransactionsList" class="transactions-slider"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Products / Inventory Page -->
+            <section id="products" class="page">
+                <div class="inventory-header">
+                    <div>
+                        <h2 style="color: var(--cyan); margin-bottom: 0.5rem;">Inventory Management</h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">Manage your products and stock</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" id="addProductBtnMain">➕ Add New Product</button>
+                </div>
+                <div class="card">
+                    <div class="search-container">
+                        <input type="text" id="productSearch" placeholder="Search products...">
+                        <span>🔍</span>
+                    </div>
+                </div>
+                <div id="productsList" class="products-grid"></div>
+
+                <!-- Add/Edit Product Modal -->
+                <div id="productModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h2 id="modalTitle">Add New Product</h2>
+                        <form id="productForm">
+                            <div class="form-group">
+                                <label for="productName">Product Name *</label>
+                                <input type="text" id="productName" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="productSKU">SKU *</label>
+                                    <input type="text" id="productSKU" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="productCategory">Category</label>
+                                    <input type="text" id="productCategory">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="productPrice">Selling Price (₹) *</label>
+                                    <input type="number" id="productPrice" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="productWholesalePrice">Wholesale Price (₹) *</label>
+                                    <input type="number" id="productWholesalePrice" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="productQuantity">Stock Quantity *</label>
+                                <input type="number" id="productQuantity" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productDescription">Description</label>
+                                <textarea id="productDescription" rows="2"></textarea>
+                            </div>
+
+                            <!-- COLOURS SECTION -->
+                            <div class="form-group">
+                                <label>🎨 Available Colours &amp; Stock per Colour</label>
+                                <div style="display:flex;gap:0.5rem;margin-top:0.4rem;">
+                                    <input type="text" id="colorInput" placeholder="Type colour name..."
+                                        style="flex:1;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.75rem;color:var(--text-light);font-size:0.88rem;">
+                                    <input type="number" id="colorQtyInput" min="0" value="0" placeholder="Qty"
+                                        style="width:72px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.5rem;color:var(--text-light);font-size:0.88rem;text-align:center;">
+                                    <button type="button" id="addColorBtn" style="background:var(--primary);border:none;color:white;border-radius:8px;padding:0.55rem 0.85rem;cursor:pointer;font-size:0.88rem;white-space:nowrap;">+ Add</button>
+                                </div>
+                                <button type="button" onclick="app.openColorChartPicker()" style="margin-top:0.5rem;width:100%;background:var(--bg-secondary);border:1.5px solid var(--border);color:var(--text-light);border-radius:8px;padding:0.55rem 0.75rem;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center;gap:0.4rem;">
+                                    🎨 <span>Pick from Colour Chart</span>
+                                </button>
+                                <div id="colorTagsContainer" style="margin-top:0.6rem;">
+                                    <span style="color:var(--text-muted);font-size:0.8rem;">No colours added yet</span>
+                                </div>
+                                <p style="color:var(--text-muted);font-size:0.75rem;margin-top:0.3rem;">💡 Set qty per colour. The main "Stock Quantity" above will auto-sum when colours are used.</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Product Photo</label>
+                                <div class="photo-input-group">
+                                    <div class="photo-buttons">
+                                        <button type="button" class="btn btn-small btn-primary" id="cameraBtn">📷 Camera</button>
+                                        <button type="button" class="btn btn-small btn-secondary" id="uploadBtn">📁 Upload</button>
+                                    </div>
+                                    <input type="file" id="productPhoto" accept="image/*" style="display: none;">
+                                </div>
+                            </div>
+                            <div id="photoPreview" class="photo-preview"></div>
+                            <button type="submit" class="btn btn-primary">Save Product</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Camera Modal -->
+                <div id="cameraModal" class="modal">
+                    <div class="modal-content camera-modal">
+                        <span class="close">&times;</span>
+                        <h3>📷 Capture Photo</h3>
+                        <video id="cameraFeed" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 0.5rem; margin: 1rem 0;"></video>
+                        <canvas id="photoCanvas" style="display: none;"></canvas>
+                        <div class="camera-controls">
+                            <button type="button" class="btn btn-primary" id="captureBtn">📸 Capture</button>
+                            <button type="button" class="btn btn-secondary" id="retakeBtn" style="display: none;">🔄 Retake</button>
+                            <button type="button" class="btn btn-secondary" id="closeCamera">✕ Close</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quantity + Colour Selector Modal (global, NOT inside products section) -->
+            <div id="quantitySelectorModal" class="modal">
+                <div class="modal-content quantity-modal">
+                    <span class="close">&times;</span>
+                    <h3>📦 Select Quantity &amp; Colours</h3>
+                    <div class="quantity-product-info">
+                        <div class="qty-info-row">
+                            <label>Product:</label>
+                            <span id="quantityProductName" style="font-weight: 600; color: var(--cyan);">-</span>
+                        </div>
+                        <div class="qty-info-row">
+                            <label>Price:</label>
+                            <span id="quantityProductPrice" style="font-weight: 600; color: var(--green);">₹0.00</span>
+                        </div>
+                        <div class="qty-info-row">
+                            <label>Total Stock:</label>
+                            <span id="quantityProductStock" style="font-weight: 600; color: var(--text-light);">-</span>
+                        </div>
+                    </div>
+
+                    <!-- No-colour mode: simple qty -->
+                    <div id="quantitySimpleRow" class="form-group">
+                        <label for="quantityInput">Quantity *</label>
+                        <input type="number" id="quantityInput" min="1" value="1" required>
+                    </div>
+
+                    <!-- Multi-colour mode -->
+                    <div id="quantityColorSection" style="display:none;">
+                        <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;">Select colours &amp; quantities — each colour will be billed as a separate line item.</p>
+                        <div id="colorQtyRows" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;"></div>
+                        <div id="colorQtyValidation" style="font-size:0.82rem;margin-top:0.3rem;"></div>
+                    </div>
+
+                    <div class="quantity-modal-actions">
+                        <button type="button" class="btn btn-primary" onclick="app.confirmAddToBilling()">✓ Add to Bill</button>
+                        <button type="button" class="btn btn-secondary" onclick="app.closeModal(document.getElementById('quantitySelectorModal'))">✕ Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Billing Page -->
+            <section id="billing" class="page">
+                <div class="billing-header">
+                    <div>
+                        <h2 style="color: var(--green); margin-bottom: 0.5rem;">Create Invoice</h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">Generate new billing invoice</p>
+                    </div>
+                    <button class="btn btn-secondary" id="newInvoiceBtn">🆕 Clear Form</button>
+                </div>
+                <!-- Mobile billing tabs -->
+                <div class="billing-tabs">
+                    <button class="billing-tab-btn active" id="billingTabCustomer" onclick="app.switchBillingTab('customer')">👤 Customer</button>
+                    <button class="billing-tab-btn" id="billingTabCart" onclick="app.switchBillingTab('cart')">🛒 Cart</button>
+                </div>
+                <div class="billing-container">
+                    <div class="billing-form-section tab-active" id="billingFormSection">
+                        <div class="card">
+                            <h3>Customer Details</h3>
+                            <div class="form-group">
+                                <label for="invoiceDate">Invoice Date</label>
+                                <input type="date" id="invoiceDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="customerType">Customer Type <span style="color:var(--pink);">*</span></label>
+                                <div style="display:flex;gap:0.6rem;margin-top:0.4rem;">
+                                    <button type="button" id="typeCashBtn" onclick="app.setCustomerType('cash')"
+                                        class="btn btn-secondary" style="flex:1;font-size:0.9rem;padding:0.6rem 0.4rem;">
+                                        💵 Cash
+                                    </button>
+                                    <button type="button" id="typeWholesalerBtn" onclick="app.setCustomerType('wholesaler')"
+                                        class="btn btn-secondary" style="flex:1;font-size:0.9rem;padding:0.6rem 0.4rem;">
+                                        🏪 Wholesaler
+                                    </button>
+                                </div>
+                                <input type="hidden" id="customerType" value="">
+                            </div>
+                            <div class="form-group">
+                                <label for="customerName">Customer Name <span style="color:var(--pink);">*</span></label>
+                                <input type="text" id="customerName" placeholder="Required" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="customerPhone">Phone Number</label>
+                                <input type="text" id="customerPhone">
+                            </div>
+                            <button class="btn btn-primary" style="width:100%;margin-top:0.5rem;" onclick="app.saveCustomerAndProceed()">
+                                Next: Add Items to Cart →
+                            </button>
+                        </div>
+                    </div>
+                    <div class="billing-cart-section" id="billingCartSection">
+                        <div class="card">
+                            <h3>Cart Items</h3>
+                            <div class="add-item-section">
+                                <select id="productSelect">
+                                    <option value="">Select a product...</option>
+                                </select>
+                                <input type="number" id="itemQuantity" min="1" value="1" placeholder="Qty">
+                                <button class="btn btn-small btn-primary" id="addItemBtn">Add</button>
+                            </div>
+                            <div class="cart-table-wrap">
+                                <table class="cart-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Price</th>
+                                            <th>Qty</th>
+                                            <th>Total</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cartItems"></tbody>
+                                </table>
+                            </div>
+                            <div class="invoice-summary">
+                                <div class="summary-row total">
+                                    <span>Total:</span>
+                                    <span id="totalAmount">₹0.00</span>
+                                </div>
+                            </div>
+                            <div class="billing-actions">
+                                <button class="btn btn-primary" id="generateInvoiceBtn">Generate Invoice</button>
+                                <button class="btn btn-secondary" id="clearCartBtn">Clear Cart</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Low Stock Page -->
+            <section id="lowstock" class="page">
+                <div class="lowstock-header">
+                    <div>
+                        <h2 style="color: var(--pink); margin-bottom: 0.5rem;">⚠️ Low Stock Items</h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">Manage and monitor low inventory levels</p>
+                    </div>
+                </div>
+                <div class="lowstock-container">
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <h3>Threshold Settings</h3>
+                        <div class="threshold-form">
+                            <div class="form-group">
+                                <label for="lowStockThreshold">Low Stock Threshold (Units)</label>
+                                <div class="threshold-input-group">
+                                    <input type="number" id="lowStockThreshold" min="1" max="1000" value="10">
+                                    <button class="btn btn-primary btn-small" id="saveThresholdBtn">Save</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <h3>Low Stock Summary</h3>
+                        <div class="lowstock-summary">
+                            <div class="summary-item">
+                                <span>Total Low Stock Items:</span>
+                                <span id="totalLowStockCount" class="summary-value" style="color: var(--pink);">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Critical (0-3 units):</span>
+                                <span id="criticalCount" class="summary-value" style="color: var(--pink);">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Warning (4-threshold):</span>
+                                <span id="warningCount" class="summary-value" style="color: orange;">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <h3>📬 Reorder Settings</h3>
+                        <div class="form-group">
+                            <label for="supplierContact">Supplier Contact (Phone/Email)</label>
+                            <input type="text" id="supplierContact" placeholder="e.g. supplier@email.com or +91 9999999999">
+                        </div>
+                        <div class="form-group">
+                            <label for="defaultReorderQty">Default Reorder Quantity</label>
+                            <input type="number" id="defaultReorderQty" min="1" value="50">
+                        </div>
+                        <button class="btn btn-primary btn-small" id="saveReorderSettingsBtn">💾 Save Reorder Settings</button>
+                    </div>
+                    <div class="card">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+                            <h3>Products Below Threshold</h3>
+                            <button class="btn btn-primary btn-small" id="reorderAllBtn">📦 Reorder All Low Stock</button>
+                        </div>
+                        <div class="lowstock-table-wrap">
+                            <table class="lowstock-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product Name</th>
+                                        <th>Stock</th>
+                                        <th>Threshold</th>
+                                        <th>Status</th>
+                                        <th>Reorder Qty</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lowstockList"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Colour Book Page -->
+            <section id="colorbook" class="page">
+                <div class="inventory-header">
+                    <div>
+                        <h2 style="color: var(--purple); margin-bottom: 0.5rem;">🎨 Colour Book</h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">All available product colours at a glance</p>
+                    </div>
+                </div>
+                <div id="colorBookContent" style="margin-top:1rem;"></div>
+            </section>
+
+            <!-- Settings Page -->
+            <section id="settings" class="page">
+                <div class="settings-header">
+                    <div>
+                        <h2 style="color: var(--cyan); margin-bottom: 0.5rem;">⚙️ Settings</h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">Manage application preferences and configuration</p>
+                    </div>
+                </div>
+                <div class="settings-container">
+
+                    <!-- Store Information -->
+                    <div class="card">
+                        <h3>🏪 Store Information</h3>
+                        <div class="form-group">
+                            <label for="storeName">Store Name</label>
+                            <input type="text" id="storeName" placeholder="Your Store Name">
+                        </div>
+                        <div class="form-group">
+                            <label for="storeOwner">Owner Name</label>
+                            <input type="text" id="storeOwner" placeholder="Owner Name">
+                        </div>
+                        <div class="form-group">
+                            <label for="storeEmail">Email</label>
+                            <input type="email" id="storeEmail" placeholder="store@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="storePhone">Phone Number</label>
+                            <input type="tel" id="storePhone" placeholder="+91 1234567890">
+                        </div>
+                        <div class="form-group">
+                            <label for="storeAddress">Address</label>
+                            <textarea id="storeAddress" rows="2" placeholder="Shop address"></textarea>
+                        </div>
+                        <button class="btn btn-primary" id="saveStoreInfoBtn">💾 Save Store Info</button>
+                    </div>
+
+                    <!-- User Profiles -->
+                    <div class="card">
+                        <h3>👥 User Profiles</h3>
+                        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem;">Multiple people can use this app on the same device with separate data.</p>
+                        <div id="profilesSettingsList"></div>
+                        <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
+                            <button class="btn btn-primary btn-small" id="addProfileSettingsBtn">➕ Add Profile</button>
+                            <button class="btn btn-secondary btn-small" id="switchProfileBtn">🔀 Switch Profile</button>
+                        </div>
+                    </div>
+
+                    <!-- General Settings -->
+                    <div class="card">
+                        <h3>⚙️ General Settings</h3>
+                        <div class="form-group">
+                            <label for="currency">Currency</label>
+                            <select id="currency">
+                                <option value="₹">Indian Rupee (₹)</option>
+                                <option value="$">US Dollar ($)</option>
+                                <option value="€">Euro (€)</option>
+                                <option value="£">British Pound (£)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="taxRate">Tax Rate (%)</label>
+                            <input type="number" id="taxRate" min="0" max="100" step="0.1" placeholder="18">
+                        </div>
+                        <div class="form-group">
+                            <label for="invoicePrefix">Invoice Prefix</label>
+                            <input type="text" id="invoicePrefix" placeholder="INV">
+                        </div>
+                        <button class="btn btn-primary" id="saveGeneralBtn">💾 Save General Settings</button>
+                    </div>
+
+                    <!-- Low Stock -->
+                    <div class="card">
+                        <h3>📦 Low Stock Alert</h3>
+                        <div class="form-group">
+                            <label for="lowStockThresholdSetting">Low Stock Threshold (Units)</label>
+                            <div class="threshold-input-group">
+                                <input type="number" id="lowStockThresholdSetting" min="1" max="1000" value="10">
+                                <button class="btn btn-primary btn-small" id="saveLowStockBtn">Save</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Theme -->
+                    <div class="card">
+                        <h3>🎨 Appearance</h3>
+                        <div class="theme-options">
+                            <div class="theme-option">
+                                <input type="radio" id="themeDark" name="appTheme" value="dark" checked>
+                                <label for="themeDark" class="theme-label">
+                                    <span class="theme-preview dark"></span>
+                                    <span>Dark Mode</span>
+                                </label>
+                            </div>
+                            <div class="theme-option">
+                                <input type="radio" id="themeLight" name="appTheme" value="light">
+                                <label for="themeLight" class="theme-label">
+                                    <span class="theme-preview light"></span>
+                                    <span>Light Mode</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="saveThemeBtn" style="margin-top: 1rem;">🎨 Apply Theme</button>
+                    </div>
+
+                    <!-- Data Management -->
+                    <div class="card">
+                        <h3>💾 Data Management</h3>
+                        <div class="data-actions">
+                            <button class="btn btn-secondary" id="exportDataBtn">📥 Export Data (JSON)</button>
+                            <button class="btn btn-secondary" id="backupDataBtn">📦 Backup to File</button>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="card danger-zone">
+                        <h3>⚠️ Danger Zone</h3>
+                        <div class="danger-actions">
+                            <button class="btn btn-danger" id="clearAllBtn">🗑️ Clear All Data</button>
+                            <button class="btn btn-danger" id="resetAppBtn">🔄 Reset App to Default</button>
+                        </div>
+                    </div>
+
+                    <!-- About -->
+                    <div class="card">
+                        <h3>ℹ️ About</h3>
+                        <div class="about-info">
+                            <p><strong>Shop Inventory</strong></p>
+                            <p style="color: var(--text-muted);">Inventory & Billing Management System</p>
+                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem;">Version: 3.0.0</p>
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">© 2026 Shop Inventory. All data stored locally.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Invoices History Page -->
+            <section id="invoices" class="page">
+                <div class="page-header">
+                    <div class="search-container">
+                        <input type="text" id="invoiceSearch" placeholder="Search invoices...">
+                        <span>🔍</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div id="invoicesList" class="invoices-list"></div>
+                </div>
+            </section>
+
+        </div><!-- end pages-container -->
+    </main>
+</div><!-- end mainApp -->
+
+<!-- Invoice Print Modal -->
+<div id="invoicePrintModal" class="modal">
+    <div class="modal-content print-modal">
+        <span class="close">&times;</span>
+        <div id="invoicePrintContent" class="invoice-print"></div>
+        <div class="print-actions">
+            <button class="btn btn-primary" id="printBtn">🖨️ Print</button>
+            <button class="btn btn-secondary" id="downloadBtn">📥 Download</button>
+        </div>
+    </div>
+</div>
+
+<!-- Load scripts once, in correct order -->
+<script src="storage.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
