@@ -2,7 +2,7 @@
   "name": "Shop Inventory - Inventory & Billing",
   "short_name": "Shop Inventory",
   "description": "Complete inventory management and billing system for your shop",
-  "start_url": "/index.html",
+  "start_url": "https://manangoyalcs25-hash.github.io/shop-inventory/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
